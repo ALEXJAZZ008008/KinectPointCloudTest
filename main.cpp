@@ -17,11 +17,15 @@ using namespace pcl::io;
 int offset_depth_image(vector<vector<unsigned short>> &depth_image,
                        unsigned int horizontal_resolution,
                        unsigned int verticle_resolution,
-                       int offset,
-                       float focal_length,
+                       unsigned int number_of_curves,
                        bool continuous_bool,
-                       int iteration_offset)
+                       bool curved_bool,
+                       int offset,
+                       float focal_length)
 {
+    double verticle_curve_step = ((1.0 * M_PI) * number_of_curves) / verticle_resolution;
+    double horizontal_curve_step = ((1.0 * M_PI) * number_of_curves) / horizontal_resolution;
+
     for(unsigned long i = 0; i < depth_image.size(); ++i)
     {
         for(unsigned int j = 0; j < verticle_resolution; ++j)
@@ -30,11 +34,15 @@ int offset_depth_image(vector<vector<unsigned short>> &depth_image,
             {
                 if(continuous_bool)
                 {
-                    depth_image[i][(horizontal_resolution * j) + k] = static_cast<unsigned short>((static_cast<unsigned long>(iteration_offset) / depth_image.size()) * i);
+                    depth_image[i][(horizontal_resolution * j) + k] *= (i + 1);
                 }
                 else
                 {
-                    depth_image[i][(horizontal_resolution * j) + k] = static_cast<unsigned short>(iteration_offset);
+                    if(curved_bool)
+                    {
+                        depth_image[i][(horizontal_resolution * j) + k] = static_cast<unsigned short>(floor(depth_image[i][(horizontal_resolution * j) + k] *
+                                fabs(sin(verticle_curve_step * j) + sin(horizontal_curve_step * k))));
+                    }
                 }
             }
         }
@@ -95,8 +103,8 @@ int depth_image_to_point_cloud(vector<PointCloud<PointXYZ>> &point_cloud,
 {
     for(unsigned long i = 0; i < point_cloud.size(); ++i)
     {
-        point_cloud[i].width = horizontal_resolution;
-        point_cloud[i].height = verticle_resolution;
+        point_cloud[i].width = horizontal_resolution * verticle_resolution;
+        point_cloud[i].height = 1;
         point_cloud[i].is_dense = false;
         point_cloud[i].points.resize(horizontal_resolution * verticle_resolution);
 
@@ -165,11 +173,14 @@ int kinect_point_cloud_test_main()
     unsigned long iterations = 2;
     unsigned int horizontal_resolution = 640;
     unsigned int verticle_resolution = 480;
+    unsigned short iteration_offset = 1000;
+    unsigned int number_of_curves = 1;
+    unsigned char continuous = 0;
+    bool continuous_bool = false;
+    unsigned char curved = 0;
+    bool curved_bool = false;
     int offset = -10;
     float focal_length = 0.0021f;
-    unsigned char continuous = 1;
-    bool continuous_bool = false;
-    int iteration_offset = 1000;
     float rotation_x = 1.0f * static_cast<float>(M_PI);
     float rotation_y = 1.0f * static_cast<float>(M_PI);
     float rotation_z = 1.0f * static_cast<float>(M_PI);
@@ -186,35 +197,32 @@ int kinect_point_cloud_test_main()
         cout << "Please enter outut_path: ";
         cin >> output_path;
 
-        cout << "Please enter outut_path: ";
-        cin >> output_path;
-
         cout << "Please enter number of iterations: ";
         cin >> iterations;
 
+        cout << "Please enter offset per iteration: ";
+        cin >> iteration_offset;
+
+        cout << "Please enter horizontal resolution: ";
+        cin >> horizontal_resolution;
+
         cout << "Please enter verticle resolution: ";
         cin >> verticle_resolution;
+
+        cout << "Please enter number of curves: ";
+        cin >> number_of_curves;
+
+        cout << "Continuous iteration offset? (0/1): ";
+        cin >> continuous;
+
+        cout << "Curved iteration offset? (0/1): ";
+        cin >> curved;
 
         cout << "Please enter offset: ";
         cin >> offset;
 
         cout << "Please enter focal length: ";
         cin >> focal_length;
-
-        cout << "Continuous iteration offset? (0/1): ";
-        cin >> continuous;
-
-        if(continuous == 1)
-        {
-            continuous_bool = true;
-        }
-        else
-        {
-            continuous_bool = false;
-        }
-
-        cout << "Please enter offset per iteration: ";
-        cin >> iteration_offset;
 
         cout << "Please the x component of the rotation: ";
         cin >> rotation_x;
@@ -235,11 +243,29 @@ int kinect_point_cloud_test_main()
         cin >> translation_z;
     }
 
-    vector<vector<unsigned short>> depth_image(iterations, vector<unsigned short>(static_cast<unsigned long>(horizontal_resolution * verticle_resolution), 0));
+    if(continuous == 1)
+    {
+        continuous_bool = true;
+    }
+    else
+    {
+        continuous_bool = false;
+    }
+
+    if(curved == 1)
+    {
+        curved_bool = true;
+    }
+    else
+    {
+        curved_bool = false;
+    }
+
+    vector<vector<unsigned short>> depth_image(iterations, vector<unsigned short>(static_cast<unsigned long>(horizontal_resolution * verticle_resolution), iteration_offset));
 
     vector<PointCloud<PointXYZ>> point_cloud(iterations, PointCloud<PointXYZ>());
 
-    offset_depth_image(depth_image, horizontal_resolution, verticle_resolution, offset, focal_length, continuous_bool, iteration_offset);
+    offset_depth_image(depth_image, horizontal_resolution, verticle_resolution, number_of_curves, continuous_bool, curved_bool, offset, focal_length);
 
     write_depth_to_file(output_path, depth_image);
 
@@ -247,7 +273,7 @@ int kinect_point_cloud_test_main()
 
     depth_image_to_point_cloud(point_cloud, depth_image, horizontal_resolution, verticle_resolution, offset, focal_length);
 
-    offset_point_cloud(point_cloud, rotation_x, rotation_y, rotation_z, translation_x, translation_y, translation_z);
+    //offset_point_cloud(point_cloud, rotation_x, rotation_y, rotation_z, translation_x, translation_y, translation_z);
 
     write_point_cloud_to_file(output_path, point_cloud);
 
