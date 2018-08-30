@@ -15,20 +15,21 @@ using namespace pcl;
 using namespace pcl::io;
 
 int offset_depth_image(vector<vector<unsigned short>> &depth_image,
+                       unsigned int vertical_resolution,
                        unsigned int horizontal_resolution,
-                       unsigned int verticle_resolution,
-                       unsigned int number_of_curves,
+                       unsigned int number_of_vertical_curves,
+                       unsigned int number_of_horizontal_curves,
                        bool continuous_bool,
                        bool curved_bool,
                        int offset,
                        float focal_length)
 {
-    double verticle_curve_step = ((1.0 * M_PI) * number_of_curves) / verticle_resolution;
-    double horizontal_curve_step = ((1.0 * M_PI) * number_of_curves) / horizontal_resolution;
+    double vertical_curve_step = ((1.0 * M_PI) * number_of_vertical_curves) / vertical_resolution;
+    double horizontal_curve_step = ((1.0 * M_PI) * number_of_horizontal_curves) / horizontal_resolution;
 
     for(unsigned long i = 0; i < depth_image.size(); ++i)
     {
-        for(unsigned int j = 0; j < verticle_resolution; ++j)
+        for(unsigned int j = 0; j < vertical_resolution; ++j)
         {
             for(unsigned int k = 0; k < horizontal_resolution; ++k)
             {
@@ -41,7 +42,7 @@ int offset_depth_image(vector<vector<unsigned short>> &depth_image,
                     if(curved_bool)
                     {
                         depth_image[i][(horizontal_resolution * j) + k] = static_cast<unsigned short>(floor(depth_image[i][(horizontal_resolution * j) + k] *
-                                fabs(sin(verticle_curve_step * j) + sin(horizontal_curve_step * k))));
+                                fabs((sin(vertical_curve_step * j) + sin(horizontal_curve_step * k)) / 2.0)));
                     }
                 }
             }
@@ -71,7 +72,7 @@ int write_depth_to_file(string &output_path, vector<vector<unsigned short>> &dep
     return 1;
 }
 
-int write_header_to_file(string &output_path, vector<vector<unsigned short>> &depth_image, unsigned int horizontal_resolution, unsigned int verticle_resolution)
+int write_header_to_file(string &output_path, vector<vector<unsigned short>> &depth_image, unsigned int horizontal_resolution, unsigned int vertical_resolution)
 {
     for(unsigned long i = 0; i < depth_image.size(); ++i)
     {
@@ -81,7 +82,7 @@ int write_header_to_file(string &output_path, vector<vector<unsigned short>> &de
         header_stream << "data_type=u" << endl;
         header_stream << "data_size=16" << endl;
         header_stream << "data_dimensions=1" << endl;
-        header_stream << "data_resolution=" << to_string(horizontal_resolution) << "," << to_string(verticle_resolution) << endl;
+        header_stream << "data_resolution=" << to_string(horizontal_resolution) << "," << to_string(vertical_resolution) << endl;
         header_stream << "data_path=" + output_path + "/depth_test_" + to_string(i) + ".bin" << endl;
         header_stream << "epoch_timestamp=" << to_string(i) << endl;
         header_stream << "kinect_timestamp=" << to_string(i) << endl;
@@ -97,22 +98,22 @@ int write_header_to_file(string &output_path, vector<vector<unsigned short>> &de
 int depth_image_to_point_cloud(vector<PointCloud<PointXYZ>> &point_cloud,
                                vector<vector<unsigned short>> &depth_image,
                                unsigned int horizontal_resolution,
-                               unsigned int verticle_resolution,
+                               unsigned int vertical_resolution,
                                int offset,
                                float focal_length)
 {
     for(unsigned long i = 0; i < point_cloud.size(); ++i)
     {
-        point_cloud[i].width = horizontal_resolution * verticle_resolution;
+        point_cloud[i].width = horizontal_resolution * vertical_resolution;
         point_cloud[i].height = 1;
         point_cloud[i].is_dense = false;
-        point_cloud[i].points.resize(horizontal_resolution * verticle_resolution);
+        point_cloud[i].points.resize(horizontal_resolution * vertical_resolution);
 
-        for(unsigned int j = 0; j < verticle_resolution; ++j)
+        for(unsigned int j = 0; j < vertical_resolution; ++j)
         {
             for(unsigned int k = 0; k < horizontal_resolution; ++k)
             {
-                float x = (k - (verticle_resolution / 2.0f)) * (depth_image[i][(horizontal_resolution * j) + k] - offset) * focal_length;
+                float x = (k - (vertical_resolution / 2.0f)) * (depth_image[i][(horizontal_resolution * j) + k] - offset) * focal_length;
 
                 float y = (j - (horizontal_resolution / 2.0f)) * (depth_image[i][(horizontal_resolution * j) + k] - offset) * focal_length;
 
@@ -170,23 +171,24 @@ int kinect_point_cloud_test_main()
 {
     unsigned char configure = 0;
     string output_path = "/home/nikos/Documents/KinectPointCloudTest-output";
-    unsigned long iterations = 2;
+    unsigned long iterations = 30;
     unsigned int horizontal_resolution = 640;
-    unsigned int verticle_resolution = 480;
+    unsigned int vertical_resolution = 480;
     unsigned short iteration_offset = 1000;
-    unsigned int number_of_curves = 1;
+    unsigned int number_of_vertical_curves = 2;
+    unsigned int number_of_horizontal_curves = 3;
     unsigned char continuous = 0;
     bool continuous_bool = false;
-    unsigned char curved = 0;
-    bool curved_bool = false;
+    unsigned char curved = 1;
+    bool curved_bool = true;
     int offset = -10;
     float focal_length = 0.0021f;
-    float rotation_x = 1.0f * static_cast<float>(M_PI);
-    float rotation_y = 1.0f * static_cast<float>(M_PI);
-    float rotation_z = 1.0f * static_cast<float>(M_PI);
-    float translation_x = 1000.0f;
-    float translation_y = 1000.0f;
-    float translation_z = 1000.0f;
+    float rotation_x = 0.25f * static_cast<float>(M_PI);
+    float rotation_y = 0.5f * static_cast<float>(M_PI);
+    float rotation_z = 0.1f * static_cast<float>(M_PI);
+    float translation_x = -100.0f;
+    float translation_y = 50.5f;
+    float translation_z = 100.0f;
 
 
     cout << "Configure inputs? (0/1): ";
@@ -206,11 +208,14 @@ int kinect_point_cloud_test_main()
         cout << "Please enter horizontal resolution: ";
         cin >> horizontal_resolution;
 
-        cout << "Please enter verticle resolution: ";
-        cin >> verticle_resolution;
+        cout << "Please enter vertical resolution: ";
+        cin >> vertical_resolution;
 
-        cout << "Please enter number of curves: ";
-        cin >> number_of_curves;
+        cout << "Please enter number of vertical curves: ";
+        cin >> number_of_vertical_curves;
+
+        cout << "Please enter number of horizontal curves: ";
+        cin >> number_of_horizontal_curves;
 
         cout << "Continuous iteration offset? (0/1): ";
         cin >> continuous;
@@ -261,19 +266,19 @@ int kinect_point_cloud_test_main()
         curved_bool = false;
     }
 
-    vector<vector<unsigned short>> depth_image(iterations, vector<unsigned short>(static_cast<unsigned long>(horizontal_resolution * verticle_resolution), iteration_offset));
+    vector<vector<unsigned short>> depth_image(iterations, vector<unsigned short>(static_cast<unsigned long>(horizontal_resolution * vertical_resolution), iteration_offset));
 
     vector<PointCloud<PointXYZ>> point_cloud(iterations, PointCloud<PointXYZ>());
 
-    offset_depth_image(depth_image, horizontal_resolution, verticle_resolution, number_of_curves, continuous_bool, curved_bool, offset, focal_length);
+    offset_depth_image(depth_image, vertical_resolution, horizontal_resolution, number_of_vertical_curves, number_of_horizontal_curves, continuous_bool, curved_bool, offset, focal_length);
 
     write_depth_to_file(output_path, depth_image);
 
-    write_header_to_file(output_path, depth_image, horizontal_resolution, verticle_resolution);
+    write_header_to_file(output_path, depth_image, horizontal_resolution, vertical_resolution);
 
-    depth_image_to_point_cloud(point_cloud, depth_image, horizontal_resolution, verticle_resolution, offset, focal_length);
+    depth_image_to_point_cloud(point_cloud, depth_image, horizontal_resolution, vertical_resolution, offset, focal_length);
 
-    //offset_point_cloud(point_cloud, rotation_x, rotation_y, rotation_z, translation_x, translation_y, translation_z);
+    offset_point_cloud(point_cloud, rotation_x, rotation_y, rotation_z, translation_x, translation_y, translation_z);
 
     write_point_cloud_to_file(output_path, point_cloud);
 
