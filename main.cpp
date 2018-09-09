@@ -139,15 +139,15 @@ int offset_point_cloud(vector<PointCloud<PointXYZ>> &point_cloud,
 {
     for(unsigned long i = 0; i < point_cloud.size(); ++i)
     {
-        Eigen::AngleAxisf rotation_x_matrix((rotation_x / point_cloud.size()) * i, Eigen::Vector3f::UnitX());
+        Eigen::AngleAxisf rotation_x_matrix((rotation_x / (point_cloud.size() - 1)) * i, Eigen::Vector3f::UnitX());
 
-        Eigen::AngleAxisf rotation_y_matrix((rotation_y / point_cloud.size()) * i, Eigen::Vector3f::UnitY());
+        Eigen::AngleAxisf rotation_y_matrix((rotation_y / (point_cloud.size() - 1)) * i, Eigen::Vector3f::UnitY());
 
-        Eigen::AngleAxisf rotation_z_matrix((rotation_z / point_cloud.size()) * i, Eigen::Vector3f::UnitZ());
+        Eigen::AngleAxisf rotation_z_matrix((rotation_z / (point_cloud.size() - 1)) * i, Eigen::Vector3f::UnitZ());
 
-        Eigen::Translation3f translation_matrix((translation_x / point_cloud.size()) * i,
-                                                (translation_y / point_cloud.size()) * i,
-                                                (translation_z / point_cloud.size()) * i);
+        Eigen::Translation3f translation_matrix((translation_x / (point_cloud.size() - 1)) * i,
+                                                (translation_y / (point_cloud.size() - 1)) * i,
+                                                (translation_z / (point_cloud.size() - 1)) * i);
 
         Eigen::Matrix4f transformation = (rotation_x_matrix * rotation_y_matrix * rotation_z_matrix * translation_matrix).matrix();
 
@@ -171,23 +171,23 @@ int kinect_point_cloud_test_main()
 {
     unsigned char configure = 0;
     string output_path = "/home/nikos/Documents/KinectPointCloudTest-output";
-    unsigned long iterations = 30;
+    unsigned long iterations = 12;
     unsigned int horizontal_resolution = 640;
     unsigned int vertical_resolution = 480;
-    unsigned short iteration_offset = 1000;
-    unsigned int number_of_vertical_curves = 2;
-    unsigned int number_of_horizontal_curves = 3;
+    unsigned short iteration_offset = 100;
+    unsigned int number_of_vertical_curves = 0;
+    unsigned int number_of_horizontal_curves = 0;
     unsigned char continuous = 0;
     bool continuous_bool = false;
-    unsigned char curved = 1;
-    bool curved_bool = true;
+    unsigned char curved = 0;
+    bool curved_bool = false;
     int offset = -10;
     float focal_length = 0.0021f;
-    float rotation_x = 0.25f * static_cast<float>(M_PI);
+    float rotation_x = 0.5f * static_cast<float>(M_PI);
     float rotation_y = 0.5f * static_cast<float>(M_PI);
-    float rotation_z = 0.1f * static_cast<float>(M_PI);
-    float translation_x = -100.0f;
-    float translation_y = 50.5f;
+    float rotation_z = 0.5f * static_cast<float>(M_PI);
+    float translation_x = 100.0f;
+    float translation_y = 100.0f;
     float translation_z = 100.0f;
 
 
